@@ -51,4 +51,30 @@ describe('useTicketList', () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.data?.items).toHaveLength(1);
   });
+
+  it('should fetches immediately when a dropdown filter changes', async () => {
+    const {result} = renderHook(()=> useTicketList());
+
+    // Wait until initial load is complete
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    // Clear the mocks to count the next requests
+    getTickets.mockClear();
+
+    // Change one of the dropdown filters
+    act(() => {
+      result.current.updateFilters({status: "InProgress"});
+    });
+
+    // Wait until debounce to finish
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    // API should have been called with the new status
+    expect(getTickets).toHaveBeenCalledTimes(1);
+    expect(getTickets).toHaveBeenLastCalledWith(expect.objectContaining({status: "InProgress"}));
+  });
 });

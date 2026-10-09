@@ -40,6 +40,19 @@ Full requirements are in **[`ASSIGNMENT_CANDIDATE.md`](ASSIGNMENT_CANDIDATE.md)*
    **rough note of time spent** on what. (If the fork is private, add the reviewers as collaborators.)
 
 ---
+## Root cause explanations
+
+### Task 1.1
+
+The `useEffect` hook in `useTicketList.ts` that triggers the API call only had `search`, `page`, and `pageSize` in its 
+dependency array. It was ignoring all other filter changes, so React never fired the effect when a dropdown was changed.
+
+#### How I fixed this?
+I changed the dependency array to use `JSON.stringify(filters)` so that any change to the filters object automatically 
+triggers the effect. Added a test case for this issue as well.
+
+
+---
 
 ## Quick start
 
