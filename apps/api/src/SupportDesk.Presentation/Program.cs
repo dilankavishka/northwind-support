@@ -30,6 +30,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Services.Configure<SupportDesk.Application.Configuration.SlaOptions>(
+    builder.Configuration.GetSection(SupportDesk.Application.Configuration.SlaOptions.SectionName));
+
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

@@ -32,6 +32,12 @@ public static class DependencyInjection
 
         services.AddScoped<GetCategoriesQueryHandler>();
 
+        services.AddScoped<SupportDesk.Application.Features.Tickets.Services.TicketTriageService>();
+
+        services
+            .AddScoped<
+                SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler>();
+
         services.AddValidatorsFromAssemblyContaining<RaiseTicketCommandHandler>(ServiceLifetime.Singleton);
 
         return services;

@@ -13,6 +13,8 @@ namespace SupportDesk.Domain.Aggregates.Tickets;
 /// </remarks>
 public sealed class Ticket : AggregateRoot
 {
+    private readonly List<TicketEscalation> _escalations = new();
+    public IReadOnlyCollection<TicketEscalation> Escalations => _escalations.AsReadOnly();
     private Ticket()
     {
         // For EF Core.
@@ -110,5 +112,39 @@ public sealed class Ticket : AggregateRoot
     {
         AssignedAgentId = agentId;
         UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// Escalates the ticket and raise it's priority by one level.
+    /// </summary>
+    /// <exception cref="BusinessRuleViolationException">If the ticket is closed, resolved, or already Critical.</exception>
+    public void Escalate(DateTime? newDueDate, int? newAgentId, string reason, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        if (!IsOpen)
+        {
+            throw new BusinessRuleViolationException($"Ticket {Reference} is not open yet and cannot be escalated.");
+        }
+
+        if (Priority == TicketPriority.Critical)
+        {
+            throw new BusinessRuleViolationException($"Ticket {Reference} cannot be escalated to critical priority.");
+        }
+
+        // Raise priority one level
+        Priority = Priority switch
+        {
+            TicketPriority.Low => TicketPriority.Medium,
+            TicketPriority.Medium => TicketPriority.High,
+            TicketPriority.High => TicketPriority.Critical,
+            _ => Priority
+        };
+
+        DueAtUtc = newDueDate;
+        AssignedAgentId = newAgentId;
+        UpdatedAtUtc = nowUtc;
+
+        _escalations.Add(new TicketEscalation(reason, nowUtc));
     }
 }

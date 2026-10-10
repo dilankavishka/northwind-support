@@ -56,4 +56,16 @@ public sealed class TicketsController : ControllerBase
         [FromServices] AssignTicketCommandHandler handler,
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
+
+    /// <summary>Escalates the ticket, raising its priority by one level and writing a history row.</summary>
+    [HttpPost("{id:int}/escalate")]
+    public async Task<IActionResult> Escalate(
+        int id,
+        [FromBody] EscalateTicketRequest request,
+        [FromServices] SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommand(id, request.Reason), ct);
+        return NoContent();
+    }
 }

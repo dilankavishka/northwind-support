@@ -75,5 +75,14 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .HasFilter("[AssignedAgentId] IS NOT NULL");
 
         builder.HasIndex(t => t.DueAtUtc).HasDatabaseName("IX_Tickets_DueAtUtc");
+
+        builder.OwnsMany(t => t.Escalations, e =>
+        {
+            e.ToTable("Escalations");
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            e.Property(x => x.EscalatedAtUtc).HasColumnType("datetime2(3)");
+        });
     }
 }

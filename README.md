@@ -62,7 +62,14 @@ combine into `AND` operators in the generated SQL. Verified with the newly added
 #### How I added the next filter
 I just add one more `if (query.SlaStatus.HasValue)` block inside the `ApplyFilters` method.
 
----
+### Task 2.1 & 2.2 (Backend)
+
+- Implemented `TicketTriageService` to calculate SLAs based on category priorities and customer tiers.
+- Automated ticket assignment factoring in Agent capacity and category specializations.
+- Configured SLA business rules using `IOptions<SlaOptions>`.
+- Built domain logic and API endpoint (`POST /api/tickets/{id}/escalate`) for ticket escalation with immutable 
+- history tracking.
+- Updated `SlaEvaluator` to dynamically calculate `AtRisk` SLA statuses based on a 25% remaining window rule.
 
 ## Quick start
 
@@ -114,6 +121,7 @@ Both pass on a clean checkout and neither needs a database.
 | `GET /api/tickets/{id}` | One ticket |
 | `POST /api/tickets` | Create a ticket |
 | `PATCH /api/tickets/{id}/status` · `/assignment` | Change status / assignee |
+| `POST /api/tickets/{id}/escalate` | Escalate a ticket |
 | `GET /api/customers` · `/api/agents` · `/api/categories` | Reference data |
 
 Errors are `ProblemDetails`: `400` validation, `404` not found, `409` conflict or business rule.
