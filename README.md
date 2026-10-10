@@ -51,6 +51,16 @@ dependency array. It was ignoring all other filter changes, so React never fired
 I changed the dependency array to use `JSON.stringify(filters)` so that any change to the filters object automatically 
 triggers the effect. Added a test case for this issue as well.
 
+### Task 1.2
+
+Filtering is applied in `TicketQueries.cs` via a new `ApplyFilters` helper method.
+
+#### How I checked the SQL
+The `IQueryable` delays execution until enumeration. By using EF Core's translation, multiple `.Where()` clauses safely 
+combine into `AND` operators in the generated SQL. Verified with the newly added integration tests.
+
+#### How I added the next filter
+I just add one more `if (query.SlaStatus.HasValue)` block inside the `ApplyFilters` method.
 
 ---
 

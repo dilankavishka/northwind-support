@@ -24,6 +24,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
         var tickets = TicketsWithLabels();
+        tickets = ApplyFilters(tickets, query);
 
         var totalCount = await tickets.CountAsync(ct);
 
@@ -142,6 +143,50 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
 
         // Keeps paging stable when the sort column has duplicates.
         return sorted.ThenByDescending(x => x.Ticket.Id);
+    }
+
+    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query)
+    {
+        if (query.Status.HasValue)
+        {
+            source = source.Where(x => x.Ticket.Status == query.Status.Value);
+        }
+
+        if (query.Priority.HasValue)
+        {
+            source = source.Where(x => x.Ticket.Priority == query.Priority.Value);
+        }
+
+        if (query.CustomerId.HasValue)
+        {
+            source = source.Where(x => x.Ticket.CustomerId == query.CustomerId.Value);
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            source = source.Where(x => x.Ticket.CategoryId == query.CategoryId.Value);
+        }
+
+        if (query.AssignedAgentId.HasValue)
+        {
+            source = source.Where(x => x.Ticket.AssignedAgentId == query.AssignedAgentId.Value);
+        }
+
+        if (query.UnassignedOnly)
+        {
+            source = source.Where(x => x.Ticket.AssignedAgentId == null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var searchTerm = query.Search.Trim();
+            source = source.Where(x =>
+                x.Ticket.Title.Contains(searchTerm) ||
+                x.Ticket.Reference.Contains(searchTerm) ||
+                x.Customer.Name.Contains(searchTerm));
+        }
+
+        return source;
     }
 
     private sealed class TicketWithLabels
