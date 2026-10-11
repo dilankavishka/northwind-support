@@ -220,17 +220,3 @@ npm run web                   # start React dev server on http://localhost:5173
 | **API Health** | http://localhost:5080/health |
 | **Local API (Dev)** | https://localhost:7043 (or http://localhost:5043) |
 | **Swagger UI** | https://localhost:7043/swagger |
-
----
-
-## Time Spent Breakdown
-
-| Activity | Time Spent |
-|----------|------------|
-| Task 1: Defect isolation, fix, and server-side filtering | ~2.0 hours |
-| Task 2: SLA rules, triage service, escalation, and frontend UI | ~5.5 hours |
-| Task 3: Agent password hashing, JWT issue/validation, login UI, interceptors | ~3.5 hours |
-| Task 4: Dockerfile, non-root user, health check, compose orchestration | ~1.5 hours |
-| Debugging & Hardening: SQL Server DateDiff translation, UI spacing | ~1.0 hour |
-| Documentation: Comprehensive README, APPROACH.md, and verification | ~1.5 hours |
-| **Total** | **~15.0 hours** |
