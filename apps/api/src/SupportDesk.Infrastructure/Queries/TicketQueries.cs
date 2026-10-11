@@ -144,7 +144,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
         return sorted.ThenByDescending(x => x.Ticket.Id);
     }
 
-    private static IQueryable<TicketWithLabels> ApplyFilters(
+    private IQueryable<TicketWithLabels> ApplyFilters(
         IQueryable<TicketWithLabels> source,
         TicketQuery query,
         DateTime now)
@@ -190,34 +190,72 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
 
         if (query.SlaStatus.HasValue)
         {
-            source = query.SlaStatus.Value switch
+            var isSqlServer = db.Database.IsSqlServer();
+
+            if (isSqlServer)
             {
-                SlaStatus.NotApplicable => source.Where(x => x.Ticket.DueAtUtc == null),
+                source = query.SlaStatus.Value switch
+                {
+                    SlaStatus.NotApplicable => source.Where(x => x.Ticket.DueAtUtc == null),
 
-                SlaStatus.Met => source.Where(x =>
-                    x.Ticket.DueAtUtc != null &&
-                    x.Ticket.ResolvedAtUtc != null &&
-                    x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc),
+                    SlaStatus.Met => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc),
 
-                SlaStatus.Breached => source.Where(x =>
-                    x.Ticket.DueAtUtc != null && (
-                        (x.Ticket.ResolvedAtUtc != null && x.Ticket.ResolvedAtUtc > x.Ticket.DueAtUtc) ||
-                        (x.Ticket.ResolvedAtUtc == null && now > x.Ticket.DueAtUtc))),
+                    SlaStatus.Breached => source.Where(x =>
+                        x.Ticket.DueAtUtc != null && (
+                            (x.Ticket.ResolvedAtUtc != null && x.Ticket.ResolvedAtUtc > x.Ticket.DueAtUtc) ||
+                            (x.Ticket.ResolvedAtUtc == null && now > x.Ticket.DueAtUtc))),
 
-                SlaStatus.AtRisk => source.Where(x =>
-                    x.Ticket.DueAtUtc != null &&
-                    x.Ticket.ResolvedAtUtc == null &&
-                    now <= x.Ticket.DueAtUtc &&
-                    (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) <= 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+                    SlaStatus.AtRisk => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc == null &&
+                        now <= x.Ticket.DueAtUtc &&
+                        EF.Functions.DateDiffSecond(now, x.Ticket.DueAtUtc.Value) * 4 <=
+                        EF.Functions.DateDiffSecond(x.Ticket.CreatedAtUtc, x.Ticket.DueAtUtc.Value)),
 
-                SlaStatus.WithinSla => source.Where(x =>
-                    x.Ticket.DueAtUtc != null &&
-                    x.Ticket.ResolvedAtUtc == null &&
-                    now <= x.Ticket.DueAtUtc &&
-                    (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) > 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+                    SlaStatus.WithinSla => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc == null &&
+                        now <= x.Ticket.DueAtUtc &&
+                        EF.Functions.DateDiffSecond(now, x.Ticket.DueAtUtc.Value) * 4 >
+                        EF.Functions.DateDiffSecond(x.Ticket.CreatedAtUtc, x.Ticket.DueAtUtc.Value)),
 
-                _ => source
-            };
+                    _ => source
+                };
+            }
+            else
+            {
+                source = query.SlaStatus.Value switch
+                {
+                    SlaStatus.NotApplicable => source.Where(x => x.Ticket.DueAtUtc == null),
+
+                    SlaStatus.Met => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc),
+
+                    SlaStatus.Breached => source.Where(x =>
+                        x.Ticket.DueAtUtc != null && (
+                            (x.Ticket.ResolvedAtUtc != null && x.Ticket.ResolvedAtUtc > x.Ticket.DueAtUtc) ||
+                            (x.Ticket.ResolvedAtUtc == null && now > x.Ticket.DueAtUtc))),
+
+                    SlaStatus.AtRisk => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc == null &&
+                        now <= x.Ticket.DueAtUtc &&
+                        (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) <= 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+
+                    SlaStatus.WithinSla => source.Where(x =>
+                        x.Ticket.DueAtUtc != null &&
+                        x.Ticket.ResolvedAtUtc == null &&
+                        now <= x.Ticket.DueAtUtc &&
+                        (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) > 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+
+                    _ => source
+                };
+            }
         }
 
         return source;

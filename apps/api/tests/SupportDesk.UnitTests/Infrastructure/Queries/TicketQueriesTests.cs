@@ -84,6 +84,38 @@ public sealed class TicketQueriesTests : IDisposable
         Assert.Equal("TCK-005", result.Items.Single().Reference);
     }
 
+    [Fact]
+    public async Task GetPagedAsync_FiltersBySlaStatus_WithinSla()
+    {
+        await SeedDataAsync();
+        var query = new TicketQuery { SlaStatus = SlaStatus.WithinSla };
+        var result = await _queries.GetPagedAsync(query, CancellationToken.None);
+
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal("TCK-006", result.Items.Single().Reference);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_FiltersBySlaStatus_AtRisk()
+    {
+        await SeedDataAsync();
+        var query = new TicketQuery { SlaStatus = SlaStatus.AtRisk };
+        var result = await _queries.GetPagedAsync(query, CancellationToken.None);
+
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal("TCK-007", result.Items.Single().Reference);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_FiltersBySlaStatus_NotApplicable()
+    {
+        await SeedDataAsync();
+        var query = new TicketQuery { SlaStatus = SlaStatus.NotApplicable };
+        var result = await _queries.GetPagedAsync(query, CancellationToken.None);
+
+        Assert.Equal(3, result.TotalCount);
+    }
+
     private async Task SeedDataAsync()
     {
         var now = _clock.UtcNow;
@@ -105,11 +137,15 @@ public sealed class TicketQueriesTests : IDisposable
             TicketPriority.Medium, now.AddHours(-5), dueAtUtc: now.AddHours(2));
         var ticket5 = Ticket.Raise("TCK-005", "Help5", "Body", customer2.Id, category.Id,
             TicketPriority.Medium, now.AddHours(-10), dueAtUtc: now.AddHours(-2));
+        var ticket6 = Ticket.Raise("TCK-006", "Help6", "Body", customer2.Id, category.Id,
+            TicketPriority.Medium, now.AddHours(-1), dueAtUtc: now.AddHours(10));
+        var ticket7 = Ticket.Raise("TCK-007", "Help7", "Body", customer2.Id, category.Id,
+            TicketPriority.Medium, now.AddHours(-9), dueAtUtc: now.AddHours(1));
 
         ticket3.ChangeStatus(TicketStatus.InProgress, now);
         ticket4.ChangeStatus(TicketStatus.Resolved, now.AddHours(-1));
 
-        _db.Set<Ticket>().AddRange(ticket1, ticket2, ticket3, ticket4, ticket5);
+        _db.Set<Ticket>().AddRange(ticket1, ticket2, ticket3, ticket4, ticket5, ticket6, ticket7);
         await _db.SaveChangesAsync();
     }
 }
