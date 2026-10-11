@@ -107,4 +107,27 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// DK-7: Centralized /health endpoint reporting database reachability without requiring a token
+app.MapGet("/health", async (SupportDesk.Infrastructure.Data.SupportDbContext db, CancellationToken ct) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync(ct);
+        if (canConnect)
+        {
+            return Results.Ok(new { status = "Healthy", database = "Connected" });
+        }
+    }
+    catch
+    {
+        // Database unreachable
+    }
+
+    return Results.Problem(
+        statusCode: StatusCodes.Status503ServiceUnavailable,
+        title: "Service Unavailable",
+        detail: "Database is unreachable.");
+})
+.AllowAnonymous();
+
 app.Run();

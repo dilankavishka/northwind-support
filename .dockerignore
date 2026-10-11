@@ -1,0 +1,27 @@
+# Git and developer IDE folders
+.git
+.github
+.gitignore
+.gitattributes
+.idea
+.vscode
+
+# Build output and temp artifacts
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Node dependencies and build
+node_modules/
+**/node_modules/
+apps/web/
+
+# Secrets and environment files (DK-2 & DK-4)
+.env
+.env.*
+!.env.example
+
+# Test outputs & coverage
+TestResults/
+coverage/
