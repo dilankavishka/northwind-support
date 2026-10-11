@@ -38,6 +38,9 @@ public static class DependencyInjection
             .AddScoped<
                 SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler>();
 
+        services.AddScoped<SupportDesk.Application.Features.Auth.Commands.Login.LoginCommandHandler>();
+        services.AddScoped<SupportDesk.Application.Features.Auth.Queries.GetCurrentAgent.GetCurrentAgentQueryHandler>();
+
         services.AddValidatorsFromAssemblyContaining<RaiseTicketCommandHandler>(ServiceLifetime.Singleton);
 
         return services;

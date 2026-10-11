@@ -70,8 +70,13 @@ public sealed class TicketsController : ControllerBase
         [FromServices] SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler handler,
         CancellationToken ct)
     {
+        // AU-8: escalatedBy comes from the token, not the request body
+        var escalatedBy = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? (!string.IsNullOrWhiteSpace(request.EscalatedBy) ? request.EscalatedBy : "Agent");
+
         var result = await handler.HandleAsync(
-            new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommand(id, request.Reason, request.EscalatedBy),
+            new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommand(id, request.Reason, escalatedBy),
             ct);
         return Ok(result);
     }

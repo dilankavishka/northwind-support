@@ -45,7 +45,7 @@ public sealed class TicketQueriesTests : IDisposable
     public async Task GetPagedAsync_FiltersByCombinationOfFilters()
     {
         await SeedDataAsync();
-        var query = new TicketQuery { Priority = TicketPriority.High, Status = TicketStatus.InProgress};
+        var query = new TicketQuery { Priority = TicketPriority.High, Status = TicketStatus.InProgress };
         var result = await _queries.GetPagedAsync(query, CancellationToken.None);
 
         Assert.Equal(1, result.TotalCount);
@@ -56,7 +56,7 @@ public sealed class TicketQueriesTests : IDisposable
     public async Task GetPagedAsync_SearchMatchesCustomerName()
     {
         await SeedDataAsync();
-        var query = new TicketQuery { Search = " Batman"};
+        var query = new TicketQuery { Search = " Batman" };
         var result = await _queries.GetPagedAsync(query, CancellationToken.None);
 
         Assert.Equal(1, result.TotalCount);

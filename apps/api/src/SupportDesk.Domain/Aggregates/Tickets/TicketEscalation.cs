@@ -5,7 +5,7 @@ namespace SupportDesk.Domain.Aggregates.Tickets;
 /// </summary>
 public sealed class TicketEscalation
 {
-    private TicketEscalation() {}
+    private TicketEscalation() { }
 
     public TicketEscalation(
         int ticketId,
