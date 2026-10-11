@@ -83,6 +83,39 @@ and timestamp. Refreshes ticket and history in-place without a full page reload.
 - Notice banner displaying automated triage decisions: applied priority, SLA window & due date, assigned agent, 
 and the business rule explanation.
 
+### Task 3.1 & 3.2 (Backend Authentication & JWT)
+
+- Added `PasswordHash` column to `Agent` entity via committed EF Core migration. Credentials live directly on `Agent` 
+because every agent is an authenticated operator in this domain, avoiding unnecessary 1-to-1 table joins while keeping 
+aggregate boundaries clean.
+- Implemented `PasswordHasher` using PBKDF2 with HMAC-SHA256, 128-bit cryptographic salt, 100,000 iterations, 
+and constant-time `CryptographicOperations.FixedTimeEquals` comparison.
+- Seeded all development agents with hashed password `Admin123`.
+- Implemented `JwtTokenService` issuing standard JWT bearer tokens with 8-hour lifetime, HMAC-SHA256 signing, and 
+subject/name/email claims. Configurable via `Jwt` options in `appsettings.Development.json` and `.env.example`.
+- **Endpoints:**
+  - `POST /api/auth/login`: Validates credentials, rejects inactive agents (e.g. Yuki Tanaka) and invalid passwords with identical 401 error message `"Invalid email or password."` to prevent user enumeration. Marked `[AllowAnonymous]`.
+  - `GET /api/auth/me`: Returns current agent profile or 401.
+- Configured fallback authorization policy (`options.FallbackPolicy = RequireAuthenticatedUser()`) so every existing 
+endpoint requires a valid JWT bearer token by default, while Swagger and `/api/auth/login` remain open.
+- Updated `TicketsController.Escalate` to extract `escalatedBy` actor identity directly from JWT claims rather than 
+trusting client request bodies.
+
+### Task 3.3 (Frontend Authentication)
+
+- Extended `client.ts` to store JWT in `localStorage` under `support_desk_auth_token` and automatically attach 
+`Authorization: Bearer <token>` to all HTTP requests. Any 401 response automatically purges stored tokens, notifies 
+listeners, and evicts the session.
+  - Storing JWT in `localStorage` provides simple persistence across browser tabs and page reloads without complex 
+  CSRF cookie configuration for cross-origin APIs, though it is accessible to JavaScript if an XSS vulnerability exists.
+- Built `AuthContext` to manage active user profiles, initial session validation via `/api/auth/me`, login, and logout.
+- Implemented `ProtectedRoute` that redirects unauthenticated visitors to `/login?redirect=<target>` while preserving 
+return destination.
+- Built `/login` page with accessible labels, client validation (email format & required fields), pending/busy states, 
+and alert banners for authentication errors.
+- Updated app shell header to display authenticated agent's name and a one-click "Log out" button that clears 
+session and redirects to login.
+
 ---
 
 ## Quick start
@@ -137,12 +170,17 @@ Both pass on a clean checkout and neither needs a database.
 | `PATCH /api/tickets/{id}/status` · `/assignment` | Change status / assignee |
 | `POST /api/tickets/{id}/escalate` | Escalate a ticket |
 | `GET /api/tickets/{id}/escalations` | History of escalations |
+| `POST /api/auth/login` | Sign in with email & password, returns JWT |
+| `GET /api/auth/me` | Current authenticated agent profile |
 | `GET /api/customers` · `/api/agents` · `/api/categories` | Reference data |
 
-Errors are `ProblemDetails`: `400` validation, `404` not found, `409` conflict or business rule.
+Errors are `ProblemDetails`: `400` validation, `404` not found, `409` conflict or business rule, `401` unauthorized.
 
 **Seed data:** 5 categories, 6 customers (3 Premium), 6 agents (one inactive, one at their limit)
 and 40 tickets across every status, priority and SLA state.
+- **Dev Agent Credentials:** Password: `Admin123` across all seeded agents.
+  - Active agents: `alex@northwind.com` (Alex Turner), `sara@northwind.com` (Sara Lindqvist), `marcus@northwind.com`, `priya@northwind.com`, `david@northwind.com`
+  - Inactive agent (cannot log in): `yuki@northwind.com` (Yuki Tanaka)
 
 ## Troubleshooting
 
