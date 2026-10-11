@@ -71,6 +71,20 @@ I just add one more `if (query.SlaStatus.HasValue)` block inside the `ApplyFilte
 - history tracking.
 - Updated `SlaEvaluator` to dynamically calculate `AtRisk` SLA statuses based on a 25% remaining window rule.
 
+### Task 2.3 & 2.4 (Frontend)
+
+- Reusable component rendering all 5 SLA states (`WithinSla`, `AtRisk`, `Breached`, `Met`, `NotApplicable`) with 
+explicit text and distinct geometric symbols.
+- Added SLA status dropdown in `TicketFilters.tsx` wired to the server-side `slaStatus` parameter.
+- Client-side validation enforcing 5–500 character reason length before dispatching network requests. Disabled with 
+explanatory guidance when ticket is already `Critical`, `Resolved`, or `Closed`. Displays server errors.
+- Immutable audit trail showing previous/new priority, agent reassignment, recalculated due date, reason, actor, 
+and timestamp. Refreshes ticket and history in-place without a full page reload.
+- Notice banner displaying automated triage decisions: applied priority, SLA window & due date, assigned agent, 
+and the business rule explanation.
+
+---
+
 ## Quick start
 
 **Prerequisites:** .NET SDK 10 (`global.json`), Node.js 22 (`.nvmrc`; 20.19+ works), Docker.
@@ -117,11 +131,12 @@ Both pass on a clean checkout and neither needs a database.
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/tickets` | Paged list with `search`, `status`, `priority`, `categoryId`, `customerId`, `assignedAgentId`, `unassignedOnly`, `sortBy`, `sortDirection`. **Filters are accepted but not applied yet** (Task 1). |
+| `GET /api/tickets` | Paged list with `search`, `status`, `priority`, `categoryId`, `customerId`, `assignedAgentId`, `unassignedOnly`, `sortBy`, `sortDirection`. |
 | `GET /api/tickets/{id}` | One ticket |
 | `POST /api/tickets` | Create a ticket |
 | `PATCH /api/tickets/{id}/status` · `/assignment` | Change status / assignee |
 | `POST /api/tickets/{id}/escalate` | Escalate a ticket |
+| `GET /api/tickets/{id}/escalations` | History of escalations |
 | `GET /api/customers` · `/api/agents` · `/api/categories` | Reference data |
 
 Errors are `ProblemDetails`: `400` validation, `404` not found, `409` conflict or business rule.
