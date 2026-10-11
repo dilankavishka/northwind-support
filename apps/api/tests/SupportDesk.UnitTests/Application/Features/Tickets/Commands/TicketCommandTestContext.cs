@@ -60,6 +60,10 @@ internal sealed class TicketCommandTestContext
             Tickets.Object, Agents.Object, UnitOfWork.Object, Clock, getTicket,
             NullLogger<AssignTicketCommandHandler>.Instance);
 
+        EscalateTicket = new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler(
+            Tickets.Object, Customers.Object, Categories.Object, Agents.Object, triageService, UnitOfWork.Object, Clock, getTicket,
+            NullLogger<SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler>.Instance);
+
         Agents.Setup(a => a.GetActiveWorkloadsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AgentWorkload>());
     }
@@ -83,6 +87,8 @@ internal sealed class TicketCommandTestContext
     public ChangeTicketStatusCommandHandler ChangeTicketStatus { get; }
 
     public AssignTicketCommandHandler AssignTicket { get; }
+
+    public SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler EscalateTicket { get; }
 
     /// <summary>The ticket handed to the repository by the last create call.</summary>
     public Ticket? AddedTicket { get; private set; }

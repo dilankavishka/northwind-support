@@ -32,10 +32,10 @@ public sealed class RaiseTicketCommandHandler(
         if (category == null) throw new NotFoundException("Category not found", request.CategoryId);
 
         var now = clock.UtcNow;
-        var priority = triageService.DeterminePriority(request.RequestedPriority, category);
-        var dueDate = triageService.CalculateDueDate(priority, customer, now);
+        var (priority, priorityReason) = triageService.DeterminePriorityWithReason(request.RequestedPriority, category);
+        var (dueDate, slaReason) = triageService.CalculateDueDateWithReason(priority, customer, now);
 
-        // Raise the ticket with the calculated priority
+        // Raise the ticket with the calculated priority and sla due date
         var ticket = Ticket.Raise(
             await tickets.NextReferenceAsync(ct),
             request.Title,
@@ -43,11 +43,12 @@ public sealed class RaiseTicketCommandHandler(
             request.CustomerId,
             request.CategoryId,
             priority,
-            now);
+            now,
+            dueDate);
 
-        // Will assign ticket for the best agent
+        // Will assign ticket for the best agent or leave unassigned with reason
         var workloads = await agents.GetActiveWorkloadsAsync(ct);
-        var (agentId, reason) = triageService.Assign(category, workloads);
+        var (agentId, assignReason) = triageService.Assign(category, workloads);
         ticket.AssignTo(agentId, now);
 
         // Save and return
@@ -55,7 +56,9 @@ public sealed class RaiseTicketCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
         logger.LogInformation(
             "Ticket {Reference} raised. Priority: {Priority}, Agent: {AgentId}, Reason: {Reason}",
-            ticket.Reference, priority, agentId, reason);
-        return await getTicket.HandleAsync(ticket.Id, ct);
+            ticket.Reference, priority, agentId, assignReason);
+        var result = await getTicket.HandleAsync(ticket.Id, ct);
+        result.Triage = new TriageDecisionDto(priorityReason, slaReason, assignReason);
+        return result;
     }
 }

@@ -68,4 +68,41 @@ public class TicketTriageService(IOptions<SlaOptions> options)
 
         return (null, reason);
     }
+
+    public (TicketPriority Priority, string Reason) DeterminePriorityWithReason(TicketPriority? requestedPriority, Category category)
+    {
+        if (category.ForcesCriticalPriority)
+        {
+            return (TicketPriority.Critical, $"Category '{category.Name}' forces Critical priority.");
+        }
+
+        var priority = requestedPriority ?? TicketPriority.Medium;
+        var reason = requestedPriority.HasValue
+            ? $"Applied requested priority '{priority}'."
+            : "Defaulted to Medium priority (none requested).";
+
+        return (priority, reason);
+    }
+
+    public (DateTime DueDate, string Reason) CalculateDueDateWithReason(TicketPriority priority, Customer customer, DateTime createdAtUtc)
+    {
+        var baseHours = _sla.BaseWindowHours.GetValueOrDefault(priority, 24);
+        var calculatedHours = (double)baseHours;
+        string tierDetail = customer.Tier == CustomerTier.Premium
+            ? $", halved for Premium customer ({calculatedHours * _sla.PremiumCustomerMultiplier:0.#}h)"
+            : "";
+
+        if (customer.Tier == CustomerTier.Premium)
+        {
+            calculatedHours *= _sla.PremiumCustomerMultiplier;
+        }
+
+        var finalHours = Math.Max(calculatedHours, _sla.MinimumWindowHours);
+        string floorDetail = calculatedHours < _sla.MinimumWindowHours ? $" (enforced {_sla.MinimumWindowHours}h minimum floor)" : "";
+
+        var dueDate = createdAtUtc.AddHours(finalHours);
+        var reason = $"{priority} priority base window: {baseHours}h{tierDetail}{floorDetail}. Due in {finalHours:0.#}h.";
+        return (dueDate, reason);
+    }
+
 }

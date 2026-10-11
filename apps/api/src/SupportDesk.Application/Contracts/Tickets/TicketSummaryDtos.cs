@@ -16,3 +16,6 @@ public sealed record CategoryDto(int Id, string Name, bool RequiresSpecialist);
 
 /// <summary>Just enough of an agent to label a ticket.</summary>
 public sealed record AgentSummaryDto(int Id, string FullName);
+
+/// <summary>Triage explanations produced when a ticket is created.</summary>
+public sealed record TriageDecisionDto(string PriorityReason, string SlaWindowReason, string AssignmentReason);

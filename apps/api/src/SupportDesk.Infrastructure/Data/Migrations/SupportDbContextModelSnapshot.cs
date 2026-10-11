@@ -277,6 +277,20 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                             b1.Property<DateTime>("EscalatedAtUtc")
                                 .HasColumnType("datetime2(3)");
 
+                            b1.Property<string>("EscalatedBy")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)");
+
+                            b1.Property<int?>("FromAgentId")
+                                .HasColumnType("int");
+
+                            b1.Property<DateTime?>("FromDueAtUtc")
+                                .HasColumnType("datetime2(3)");
+
+                            b1.Property<int>("FromPriority")
+                                .HasColumnType("int");
+
                             b1.Property<string>("Reason")
                                 .IsRequired()
                                 .HasMaxLength(500)
@@ -285,11 +299,21 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                             b1.Property<int>("TicketId")
                                 .HasColumnType("int");
 
+                            b1.Property<int?>("ToAgentId")
+                                .HasColumnType("int");
+
+                            b1.Property<DateTime?>("ToDueAtUtc")
+                                .HasColumnType("datetime2(3)");
+
+                            b1.Property<int>("ToPriority")
+                                .HasColumnType("int");
+
                             b1.HasKey("Id");
 
-                            b1.HasIndex("TicketId");
+                            b1.HasIndex("TicketId")
+                                .HasDatabaseName("IX_TicketEscalations_TicketId");
 
-                            b1.ToTable("Escalations", (string)null);
+                            b1.ToTable("TicketEscalations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TicketId");

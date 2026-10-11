@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using SupportDesk.Application.Abstractions;
 using SupportDesk.Application.Contracts.Common;
 using SupportDesk.Application.Contracts.Tickets;
 using SupportDesk.Application.Features.Tickets.Commands.AssignTicket;
@@ -59,13 +60,29 @@ public sealed class TicketsController : ControllerBase
 
     /// <summary>Escalates the ticket, raising its priority by one level and writing a history row.</summary>
     [HttpPost("{id:int}/escalate")]
-    public async Task<IActionResult> Escalate(
+    [ProducesResponseType(typeof(EscalateTicketResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<EscalateTicketResponse>> Escalate(
         int id,
         [FromBody] EscalateTicketRequest request,
         [FromServices] SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommandHandler handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommand(id, request.Reason), ct);
-        return NoContent();
+        var result = await handler.HandleAsync(
+            new SupportDesk.Application.Features.Tickets.Commands.EscalationTicket.EscalateTicketCommand(id, request.Reason, request.EscalatedBy),
+            ct);
+        return Ok(result);
     }
+
+    /// <summary>Returns the escalation history for a ticket, newest first.</summary>
+    [HttpGet("{id:int}/escalations")]
+    [ProducesResponseType(typeof(IReadOnlyList<TicketEscalationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IReadOnlyList<TicketEscalationDto>> GetEscalations(
+        int id,
+        [FromServices] ITicketQueries queries,
+        CancellationToken ct) =>
+        queries.GetEscalationsAsync(id, ct);
 }

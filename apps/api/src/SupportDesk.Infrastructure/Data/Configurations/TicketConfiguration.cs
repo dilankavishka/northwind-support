@@ -78,11 +78,21 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.OwnsMany(t => t.Escalations, e =>
         {
-            e.ToTable("Escalations");
+            e.ToTable("TicketEscalations");
             e.Property(x => x.Id).ValueGeneratedOnAdd();
             e.HasKey(x => x.Id);
+            e.Property(x => x.TicketId).IsRequired();
+            e.Property(x => x.FromPriority).HasConversion<int>().IsRequired();
+            e.Property(x => x.ToPriority).HasConversion<int>().IsRequired();
+            e.Property(x => x.FromAgentId);
+            e.Property(x => x.ToAgentId);
+            e.Property(x => x.FromDueAtUtc).HasColumnType("datetime2(3)");
+            e.Property(x => x.ToDueAtUtc).HasColumnType("datetime2(3)");
             e.Property(x => x.Reason).HasMaxLength(500).IsRequired();
-            e.Property(x => x.EscalatedAtUtc).HasColumnType("datetime2(3)");
+            e.Property(x => x.EscalatedBy).HasMaxLength(100).IsRequired();
+            e.Property(x => x.EscalatedAtUtc).HasColumnType("datetime2(3)").IsRequired();
+            e.WithOwner().HasForeignKey(x => x.TicketId);
+            e.HasIndex(x => x.TicketId).HasDatabaseName("IX_TicketEscalations_TicketId");
         });
     }
 }

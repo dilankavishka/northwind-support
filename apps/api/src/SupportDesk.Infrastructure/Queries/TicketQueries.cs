@@ -23,12 +23,11 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     /// </remarks>
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
+        var now = clock.UtcNow;
         var tickets = TicketsWithLabels();
-        tickets = ApplyFilters(tickets, query);
+        tickets = ApplyFilters(tickets, query, now);
 
         var totalCount = await tickets.CountAsync(ct);
-
-        var now = clock.UtcNow;
 
         var items = await ApplySort(tickets, query)
             .Skip((query.Page - 1) * query.PageSize)
@@ -145,7 +144,10 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
         return sorted.ThenByDescending(x => x.Ticket.Id);
     }
 
-    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query)
+    private static IQueryable<TicketWithLabels> ApplyFilters(
+        IQueryable<TicketWithLabels> source,
+        TicketQuery query,
+        DateTime now)
     {
         if (query.Status.HasValue)
         {
@@ -186,7 +188,71 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 x.Customer.Name.Contains(searchTerm));
         }
 
+        if (query.SlaStatus.HasValue)
+        {
+            source = query.SlaStatus.Value switch
+            {
+                SlaStatus.NotApplicable => source.Where(x => x.Ticket.DueAtUtc == null),
+
+                SlaStatus.Met => source.Where(x =>
+                    x.Ticket.DueAtUtc != null &&
+                    x.Ticket.ResolvedAtUtc != null &&
+                    x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc),
+
+                SlaStatus.Breached => source.Where(x =>
+                    x.Ticket.DueAtUtc != null && (
+                        (x.Ticket.ResolvedAtUtc != null && x.Ticket.ResolvedAtUtc > x.Ticket.DueAtUtc) ||
+                        (x.Ticket.ResolvedAtUtc == null && now > x.Ticket.DueAtUtc))),
+
+                SlaStatus.AtRisk => source.Where(x =>
+                    x.Ticket.DueAtUtc != null &&
+                    x.Ticket.ResolvedAtUtc == null &&
+                    now <= x.Ticket.DueAtUtc &&
+                    (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) <= 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+
+                SlaStatus.WithinSla => source.Where(x =>
+                    x.Ticket.DueAtUtc != null &&
+                    x.Ticket.ResolvedAtUtc == null &&
+                    now <= x.Ticket.DueAtUtc &&
+                    (x.Ticket.DueAtUtc.Value.Ticks - now.Ticks) > 0.25 * (x.Ticket.DueAtUtc.Value.Ticks - x.Ticket.CreatedAtUtc.Ticks)),
+
+                _ => source
+            };
+        }
+
         return source;
+    }
+
+    public async Task<IReadOnlyList<TicketEscalationDto>> GetEscalationsAsync(int ticketId, CancellationToken ct)
+    {
+        var ticketExists = await db.Set<Ticket>().AnyAsync(t => t.Id == ticketId, ct);
+        if (!ticketExists)
+        {
+            throw new SupportDesk.Application.Exceptions.NotFoundException("Ticket", ticketId);
+        }
+        var escalations = await (
+            from t in db.Set<Ticket>().AsNoTracking()
+            where t.Id == ticketId
+            from e in t.Escalations
+            join fromAgent in db.Set<Agent>().AsNoTracking() on e.FromAgentId equals fromAgent.Id into fromAgents
+            from fromAgent in fromAgents.DefaultIfEmpty()
+            join toAgent in db.Set<Agent>().AsNoTracking() on e.ToAgentId equals toAgent.Id into toAgents
+            from toAgent in toAgents.DefaultIfEmpty()
+            orderby e.EscalatedAtUtc descending, e.Id descending
+            select new TicketEscalationDto(
+                e.Id,
+                e.TicketId,
+                e.FromPriority,
+                e.ToPriority,
+                fromAgent == null ? null : new AgentSummaryDto(fromAgent.Id, fromAgent.FullName),
+                toAgent == null ? null : new AgentSummaryDto(toAgent.Id, toAgent.FullName),
+                e.FromDueAtUtc,
+                e.ToDueAtUtc,
+                e.Reason,
+                e.EscalatedBy,
+                e.EscalatedAtUtc)
+        ).ToListAsync(ct);
+        return escalations;
     }
 
     private sealed class TicketWithLabels

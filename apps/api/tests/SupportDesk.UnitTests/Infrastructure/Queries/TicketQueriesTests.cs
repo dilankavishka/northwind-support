@@ -62,6 +62,28 @@ public sealed class TicketQueriesTests : IDisposable
         Assert.Equal(1, result.TotalCount);
     }
 
+    [Fact]
+    public async Task GetPagedAsync_FiltersBySlaStatus_Met()
+    {
+        await SeedDataAsync();
+        var query = new TicketQuery { SlaStatus = SlaStatus.Met };
+        var result = await _queries.GetPagedAsync(query, CancellationToken.None);
+
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal("TCK-004", result.Items.Single().Reference);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_FiltersBySlaStatus_Breached()
+    {
+        await SeedDataAsync();
+        var query = new TicketQuery { SlaStatus = SlaStatus.Breached };
+        var result = await _queries.GetPagedAsync(query, CancellationToken.None);
+
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal("TCK-005", result.Items.Single().Reference);
+    }
+
     private async Task SeedDataAsync()
     {
         var now = _clock.UtcNow;
@@ -79,10 +101,15 @@ public sealed class TicketQueriesTests : IDisposable
             TicketPriority.High, now);
         var ticket3 = Ticket.Raise("TCK-003", "Help3", "Body", customer2.Id, category.Id,
             TicketPriority.High, now);
+        var ticket4 = Ticket.Raise("TCK-004", "Help4", "Body", customer2.Id, category.Id,
+            TicketPriority.Medium, now.AddHours(-5), dueAtUtc: now.AddHours(2));
+        var ticket5 = Ticket.Raise("TCK-005", "Help5", "Body", customer2.Id, category.Id,
+            TicketPriority.Medium, now.AddHours(-10), dueAtUtc: now.AddHours(-2));
 
         ticket3.ChangeStatus(TicketStatus.InProgress, now);
+        ticket4.ChangeStatus(TicketStatus.Resolved, now.AddHours(-1));
 
-        _db.Set<Ticket>().AddRange(ticket1, ticket2, ticket3);
+        _db.Set<Ticket>().AddRange(ticket1, ticket2, ticket3, ticket4, ticket5);
         await _db.SaveChangesAsync();
     }
 }

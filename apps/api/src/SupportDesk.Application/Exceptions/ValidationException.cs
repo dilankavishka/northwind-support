@@ -12,6 +12,12 @@ public sealed class ValidationException : Exception
         Errors = errors;
     }
 
+    public ValidationException(string propertyName, string errorMessage)
+        : base("One or more validation errors occurred.")
+    {
+        Errors = new Dictionary<string, string[]> { [propertyName] = [errorMessage] };
+    }
+
     /// <summary>Field name to the messages for that field.</summary>
     public IReadOnlyDictionary<string, string[]> Errors { get; }
 }
